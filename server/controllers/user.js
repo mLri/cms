@@ -1,4 +1,5 @@
 const User = require('../models/user')
+const bcrypt = require('bcryptjs')
 
 function setJson(status, msg, data){
     return {
@@ -54,7 +55,11 @@ module.exports = {
     
             // if don't duplicate email
             if(!_dupEmail.status){
+                console.log('_data => ', _data);
+                let _salt = await bcrypt.genSalt(10)
+                _data.pass = await bcrypt.hash(_data.pass, _salt)
                 let _newUser = await User._create(_data)
+                console.log('_newUser => ', _newUser)
                 return res.status(200).json(setJson(true, 'Save success.', _newUser.data))
             }else{
                 return res.status(403).json(
