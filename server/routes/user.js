@@ -7,8 +7,12 @@ const userControllers = require('../controllers/user')
 // include libary validate data
 const { validateBody, schemas } = require('../lib/joi')
 
+// include passport
+const passport = require('passport')
+const passportConf = require('../passport')
+
 router.route('/')
-    .get(userControllers.allUsers)
+    .get(passport.authenticate('jwt', { session: false }), userControllers.allUsers)
 
 router.route('/:id')
     .get(userControllers.getUser)
@@ -21,5 +25,8 @@ router.route('/update/:id')
 
 router.route('/delete/:id')
     .delete(userControllers.deleteUser)
+
+router.route('/signin')
+    .post(userControllers.signin)
 
 module.exports = router

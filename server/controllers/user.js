@@ -1,5 +1,7 @@
 const User = require('../models/user')
 const bcrypt = require('bcryptjs')
+const JWT = require('jsonwebtoken')
+const { JWT_SECRET } = require('../configs/' + process.env.NODE_ENV + '/jwt');
 
 function setJson(status, msg, data){
     return {
@@ -9,9 +11,42 @@ function setJson(status, msg, data){
     }
 }
 
+function reverseString(str) {
+
+    var splitString = str.split("");
+    var reverseArray = splitString.reverse();
+    
+    return reverseArray.join("");
+
+}
+
+function genToken(key){
+
+    let _keyEncode = reverseString(key+'.'+JWT_SECRET)
+
+    let _token = JWT.sign({
+            iss: 'mLri',
+            sub: _keyEncode,
+            iat: new Date().getTime(), //curent time
+            exp: new Date().setDate(new Date().getDate() + 1)
+    }, JWT_SECRET)
+
+    return _token
+
+    // return JWT.sign({
+    //     iss: 'mLri',
+    //     sub: key,
+    //     iat: new Date().getTime(), //curent time
+    //     exp: new Date().setDate(new Date().getDate() + 1)
+    // }, JWT_SECRET)
+}
+
 module.exports = {
 
     allUsers: async (req, res) => {
+        
+        console.log('req allUser => ', req.user)
+
         try {
             let _allUser = await User._findAll()
 
@@ -55,9 +90,11 @@ module.exports = {
     
             // if don't duplicate email
             if(!_dupEmail.status){
-                console.log('_data => ', _data);
+
+                // hash password
                 let _salt = await bcrypt.genSalt(10)
                 _data.pass = await bcrypt.hash(_data.pass, _salt)
+
                 let _newUser = await User._create(_data)
                 console.log('_newUser => ', _newUser)
                 return res.status(200).json(setJson(true, 'Save success.', _newUser.data))
@@ -103,6 +140,42 @@ module.exports = {
             }else{
                 res.status(403).json(setJson(false, 'Can not delete, please check id', {}))
             }
+        } catch(error){
+            if(error) throw error
+        }
+    },
+
+
+    signin: async (req, res) => {
+        try{
+            let _email = req.body.email
+            let _pass = req.body.pass
+
+            // find user
+            let _user = await User._findOne({ email: _email })
+
+            // compare password
+            let _isUser = await bcrypt.compare(_pass, _user.data.pass)
+
+            if(_isUser){
+                // generate a token
+                let _token = genToken(_user.data._id)
+
+                let _data = {
+                    firstName: _user.data.firstName,
+                    lastName: _user.data.lastName,
+                    email: _user.data.email,
+                    picture: _user.data.picture,
+                    tel: _user.data.tel,
+                    token: _token
+                }
+
+                res.status(200).json(setJson(true, '', _data))
+
+            }else{
+                res.status(403).json(setJson(false, 'username or password is wrong!', {}))
+            }
+
         } catch(error){
             if(error) throw error
         }
